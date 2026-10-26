@@ -582,7 +582,7 @@ const SECTION = {
 };
 function describe(kind, it) {
   const d = S.d;
-  const per = (p) => (p === "year" ? "/yr" : "/mo");
+  const per = (p) => (p === "year" ? "/yr" : p === "week" ? "/wk" : "/mo");
   const startTxt = it.start_month != null && it.start_month > 0 ? " · starts " + periodLabel(it.start_month) : "";
   if (kind === "revenue") {
     const T = { hours: "Billable hours", unit: "Unit sales", recurring: "Recurring charges", revenue_only: "Revenue only" }[it.type];
@@ -814,6 +814,7 @@ document.addEventListener("click", (e) => {
   readStep(); WZ.W[b.dataset.tog] = b.dataset.val; drawStep();
 });
 const toggle = (key, cur, opts) => `<div class="toggle">${opts.map((o) => `<button type="button" class="${cur === o.v ? "on" : ""}" data-tog="${key}" data-val="${o.v}">${o.t}</button>`).join("")}</div>`;
+const perOpts = (cur) => [["week","Week"],["month","Month"],["year","Year"]].map(([v, t]) => `<option value="${v}" ${(cur || "month") === v ? "selected" : ""}>${t}</option>`).join("");
 const startOptions = (cur) => S.d.periods.map((p) => `<option value="${p.pi}" ${(cur ?? 0) === p.pi ? "selected" : ""}>${monthLong(p.month)}</option>`).join("");
 const streamOptions = (cur) => S.d.revenue.map((r) => `<option value="${r.id}" ${cur === r.id ? "selected" : ""}>${esc(r.name)}</option>`).join("");
 
@@ -892,7 +893,7 @@ function wizRevenue(item) {
         html: (W) => toggle("qty_mode", W.qty_mode, [{ v: "constant", t: "Same every month" }, { v: "varying", t: "Changes over time" }]) +
           (W.qty_mode === "constant"
             ? `<div class="row2"><label class="field"><span>${W.type === "revenue_only" ? "Amount" : "Number of " + Q[W.type][1]}</span><div class="${W.type === "revenue_only" ? "money" : ""}"><input class="input num" id="wQty" inputmode="decimal" value="${plain(W.qty_constant)}"></div></label>
-               <label class="field"><span>Per</span><select class="select" id="wQtyPer"><option value="month" ${W.qty_per !== "year" ? "selected" : ""}>Month</option><option value="year" ${W.qty_per === "year" ? "selected" : ""}>Year</option></select></label></div>`
+               <label class="field"><span>Per</span><select class="select" id="wQtyPer">${perOpts(W.qty_per)}</select></label></div>`
             : vgrid("qty", W, { prefix: W.type === "revenue_only" ? "$" : "", label: Q[W.type][1] })),
         read: (W) => { if (W.qty_mode === "constant") { W.qty_constant = parseNum(val("wQty")) ?? 0; W.qty_per = val("wQtyPer"); } else readVgrid("qty", W); } },
       { when: (W) => W.type !== "revenue_only",
@@ -957,7 +958,7 @@ function wizPersonnel(item) {
 }
 function payDetail(W) {
   if (W.pay_mode === "constant") return `<div class="row2" style="margin-top:16px"><label class="field"><span>Pay${W.personnel_type === "group" ? " per person" : ""}</span><div class="money"><input class="input num" id="wPay" inputmode="decimal" value="${plain(W.pay_amount)}"></div></label>
-    <label class="field"><span>Per</span><select class="select" id="wPayPer"><option value="month" ${W.pay_per !== "year" ? "selected" : ""}>Month</option><option value="year" ${W.pay_per === "year" ? "selected" : ""}>Year</option></select></label></div>`;
+    <label class="field"><span>Per</span><select class="select" id="wPayPer">${perOpts(W.pay_per)}</select></label></div>`;
   if (W.pay_mode === "varying") return `<div style="margin-top:16px">${vgrid("pay", W, { prefix: "$", label: W.personnel_type === "group" ? "pay per person" : "pay" })}</div>`;
   if (W.pay_mode === "pct_overall") return `<label class="field" style="margin-top:16px;max-width:240px"><span>Percent of all revenue</span><div class="pct"><input class="input num" id="wPct" inputmode="decimal" value="${plain(W.pct)}"></div></label>`;
   if (W.pay_mode === "pct_stream") {
@@ -1015,7 +1016,7 @@ function wizExpense(item) {
 function expDetail(W) {
   if (W.mode === "amount") return `<div style="margin-top:16px">` + toggle("amount_mode", W.amount_mode, [{ v: "constant", t: "Same every month" }, { v: "varying", t: "Changes over time" }]) +
     (W.amount_mode === "constant" ? `<div class="row2"><label class="field"><span>Amount</span><div class="money"><input class="input num" id="wAmt" inputmode="decimal" value="${plain(W.amount)}"></div></label>
-      <label class="field"><span>Per</span><select class="select" id="wPer"><option value="month" ${W.per !== "year" ? "selected" : ""}>Month</option><option value="year" ${W.per === "year" ? "selected" : ""}>Year</option></select></label></div>` : vgrid("amount", W, { prefix: "$" })) + "</div>";
+      <label class="field"><span>Per</span><select class="select" id="wPer">${perOpts(W.per)}</select></label></div>` : vgrid("amount", W, { prefix: "$" })) + "</div>";
   if (W.mode === "pct_overall") return `<label class="field" style="margin-top:16px;max-width:240px"><span>Percent of all revenue</span><div class="pct"><input class="input num" id="wPct" inputmode="decimal" value="${plain(W.pct)}"></div></label>`;
   if (W.mode === "pct_stream") return S.d.revenue.length ? `<div class="row2" style="margin-top:16px"><label class="field"><span>Revenue stream</span><select class="select" id="wStream"><option value="">Choose…</option>${streamOptions(W.stream_id)}</select></label>
       <label class="field"><span>Percent of that stream</span><div class="pct"><input class="input num" id="wPct" inputmode="decimal" value="${plain(W.pct)}"></div></label></div>` : `<p class="calc" style="margin-top:16px">Add a revenue stream first, then come back.</p>`;

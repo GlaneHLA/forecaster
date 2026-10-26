@@ -1,0 +1,1106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Forecaster · Highland Lake Capital</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --navy:#12263f; --navy-2:#1b3556; --teal:#1c7c8c; --teal-2:#15626f; --teal-bg:#e6f3f5;
+  --bg:#f5f7fa; --card:#ffffff; --fg:#1d2733; --muted:#66727f; --faint:#98a2ad;
+  --line:#e3e8ee; --line-2:#cfd7e0; --hover:#f0f4f8; --neg:#b42318; --pos:#1f7a4d;
+  --gold:#c08a2e; --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
+  --radius:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 Inter,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+.hidden{display:none!important}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- sign-in ---------- */
+#signin{min-height:100vh;display:grid;place-items:center;padding:24px 16px;background:linear-gradient(160deg,var(--navy) 0%,var(--navy-2) 55%,var(--teal-2) 130%)}
+.si-card{width:100%;max-width:400px;background:var(--card);border-radius:14px;padding:32px 28px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.brand{display:flex;align-items:center;gap:10px}
+.brand .mark{width:34px;height:34px;flex:none}
+.brand .bt{line-height:1.15}
+.brand .bt b{display:block;font-weight:700;letter-spacing:.01em}
+.brand .bt span{font-size:12px;color:var(--muted)}
+.si-card h1{font:600 24px/1.25 "Source Serif 4",Georgia,serif;margin:22px 0 6px}
+.si-card p{color:var(--muted);margin:0 0 18px}
+.field{display:block;margin:0 0 14px}
+.field>span{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:6px}
+.input,.select{width:100%;border:1px solid var(--line-2);border-radius:8px;padding:10px 12px;background:#fff;outline:0;transition:border-color .15s,box-shadow .15s}
+.input:focus,.select:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(28,124,140,.15)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line-2);background:#fff;color:var(--fg);border-radius:8px;padding:8px 14px;font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--teal);border-color:var(--teal);color:#fff}
+.btn.primary:hover{background:var(--teal-2)}
+.btn.block{width:100%;padding:11px}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.ghost:hover{background:var(--hover)}
+.btn.danger{color:var(--neg)}
+.btn:disabled{opacity:.55;cursor:default}
+.msg{margin-top:14px;font-size:13px;padding:10px 12px;border-radius:8px;background:var(--teal-bg);color:var(--teal-2)}
+.msg.err{background:#fdecea;color:var(--neg)}
+
+/* ---------- app shell ---------- */
+#app{min-height:100vh;display:grid;grid-template-columns:240px 1fr;grid-template-rows:56px 1fr}
+.top{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:0 18px;background:var(--navy);color:#fff;position:sticky;top:0;z-index:20}
+.top .brand .bt span{color:#a9b8c9}
+.top .sep{width:1px;height:26px;background:rgba(255,255,255,.18)}
+.co-pick{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:6px 10px;color:#fff;max-width:340px}
+.co-pick:hover{background:rgba(255,255,255,.14)}
+.co-pick b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.co-pick small{color:#a9b8c9}
+.top .spacer{flex:1}
+.top .btn{background:transparent;color:#fff;border-color:rgba(255,255,255,.25)}
+.top .btn:hover{background:rgba(255,255,255,.1)}
+.top .btn.primary{background:var(--teal);border-color:var(--teal)}
+.status{font-size:12px;color:#a9b8c9}
+.top .menu-btn{display:none}
+.kpis>*,.charts>*,.cos>*{min-width:0;margin-top:0!important}
+#app{background:linear-gradient(to right,#fff 240px,var(--bg) 240px)}
+.vgrid .pct .input{padding-right:26px}
+
+.side{background:#fff;border-right:1px solid var(--line);padding:14px 10px;overflow:auto;position:sticky;top:56px;height:calc(100vh - 56px)}
+.side h6{margin:16px 10px 6px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600}
+.nav{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;padding:8px 10px;border-radius:8px;color:var(--fg);text-align:left;font-weight:500}
+.nav svg{width:18px;height:18px;flex:none;color:var(--muted)}
+.nav:hover{background:var(--hover)}
+.nav.on{background:var(--teal-bg);color:var(--teal-2)}
+.nav.on svg{color:var(--teal)}
+.nav .soon{margin-left:auto;font-size:10.5px;font-weight:600;color:var(--faint);border:1px solid var(--line);border-radius:10px;padding:0 6px}
+.nav.dim{color:var(--faint)}
+
+main{padding:26px 30px 60px;min-width:0}
+.ph{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.ph h1{margin:0;font:600 26px/1.2 "Source Serif 4",Georgia,serif;color:var(--navy)}
+.ph p{margin:4px 0 0;color:var(--muted);max-width:640px}
+.ph .spacer{flex:1}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.card + .card{margin-top:16px}
+.card-h{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.card-h h3{margin:0;font-size:15px;font-weight:600}
+.card-h .spacer{flex:1}
+.card-b{padding:16px 18px}
+.empty{padding:40px 20px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--fg);font-size:15px;margin-bottom:4px}
+
+/* tables */
+.tbl-wrap{overflow:auto}
+table.t{width:100%;border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums}
+table.t th,table.t td{padding:10px 14px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+table.t th{font-size:12px;font-weight:600;color:var(--muted);background:#fafbfc;position:sticky;top:0}
+table.t th:first-child,table.t td:first-child{text-align:left;white-space:normal;min-width:220px}
+table.t tr.item:hover td{background:#fafcfd}
+table.t td .nm{font-weight:600;color:var(--fg)}
+table.t td .sub{display:block;font-size:12px;color:var(--muted);font-weight:400}
+table.t tr.total td{font-weight:700;border-top:2px solid var(--fg);border-bottom:0;background:#fff}
+table.t td.act{width:1%;padding-left:0}
+.icon-btn{border:0;background:transparent;padding:6px;border-radius:6px;color:var(--muted);display:inline-grid;place-items:center}
+.icon-btn:hover{background:var(--hover);color:var(--fg)}
+.icon-btn svg{width:16px;height:16px}
+td.neg,span.neg{color:var(--neg)}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:16px}
+.kpi{padding:16px 18px}
+.kpi .l{font-size:12.5px;color:var(--muted);font-weight:500}
+.kpi .v{font-size:24px;font-weight:700;margin-top:4px;letter-spacing:-.01em}
+.kpi .s{font-size:12px;color:var(--muted);margin-top:2px}
+.charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.chart-box{position:relative;height:250px}
+
+/* company list */
+.cos{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.co-card{padding:18px;cursor:pointer;transition:border-color .15s,transform .15s;text-align:left;border:1px solid var(--line);background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);font:inherit;color:inherit}
+.co-card:hover{border-color:var(--teal);transform:translateY(-1px)}
+.co-card h3{margin:0 0 2px;font-size:16px}
+.co-card p{margin:0;color:var(--muted);font-size:13px;min-height:20px}
+.co-card .row{display:flex;gap:18px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.co-card .row div{font-size:12px;color:var(--muted)}
+.co-card .row b{display:block;font-size:15px;color:var(--fg)}
+.co-new{display:grid;place-items:center;border-style:dashed;color:var(--teal);font-weight:600;min-height:150px}
+
+/* report controls */
+.seg{display:inline-flex;border:1px solid var(--line-2);border-radius:8px;overflow:hidden;background:#fff}
+.seg button{border:0;background:transparent;color:var(--muted);padding:7px 12px;font-weight:500}
+.seg button.on{background:var(--teal);color:#fff}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line-2);background:#fff;color:var(--muted);border-radius:16px;padding:4px 12px;font-size:12.5px;font-weight:500}
+.chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+table.st th,table.st td{padding:7px 12px}
+table.st tr.sec td{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:600;padding-top:16px;border-bottom-color:var(--line-2)}
+table.st tr.ind td:first-child{padding-left:28px}
+table.st tr.sub td{font-weight:600}
+table.st tr.dim td{color:var(--muted)}
+table.st td.tot{background:#f6f8fa;font-weight:600}
+table.st td:first-child{position:sticky;left:0;background:#fff;z-index:1}
+table.st th:first-child{position:sticky;left:0;z-index:2}
+
+/* settings inline */
+.inline-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 18px}
+.burden{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.burden .input{width:110px}
+.hint{font-size:12.5px;color:var(--muted)}
+
+/* ---------- wizard ---------- */
+.scrim{position:fixed;inset:0;background:rgba(18,38,63,.45);z-index:50;display:grid;place-items:center;padding:16px;animation:fade .15s}
+@keyframes fade{from{opacity:0}}
+.wiz{width:100%;max-width:720px;max-height:calc(100vh - 32px);background:#fff;border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden}
+.wiz-h{display:flex;align-items:center;gap:10px;padding:16px 22px;border-bottom:1px solid var(--line)}
+.wiz-h b{font-size:15px}
+.wiz-h .steps{display:flex;gap:4px;margin-left:auto}
+.wiz-h .steps i{width:22px;height:4px;border-radius:2px;background:var(--line)}
+.wiz-h .steps i.on{background:var(--teal)}
+.wiz-b{padding:24px 26px;overflow:auto;flex:1}
+.wiz-b h2{margin:0 0 6px;font:600 21px/1.3 "Source Serif 4",Georgia,serif;color:var(--navy)}
+.wiz-b .lede{color:var(--muted);margin:0 0 20px}
+.wiz-f{display:flex;gap:10px;padding:14px 22px;border-top:1px solid var(--line);background:#fafbfc}
+.wiz-f .spacer{flex:1}
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.opt{display:block;text-align:left;border:1.5px solid var(--line-2);border-radius:10px;padding:14px 16px;background:#fff}
+.opt:hover{border-color:var(--teal)}
+.opt.on{border-color:var(--teal);background:var(--teal-bg)}
+.opt b{display:block;margin-bottom:3px}
+.opt span{font-size:13px;color:var(--muted)}
+.money{position:relative}
+.money .input{padding-left:24px}
+.money::before{content:"$";position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.pct{position:relative}
+.pct .input{padding-right:28px}
+.pct::after{content:"%";position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.toggle{display:inline-flex;border:1px solid var(--line-2);border-radius:8px;overflow:hidden;margin-bottom:14px}
+.toggle button{border:0;background:#fff;padding:7px 12px;color:var(--muted);font-weight:500}
+.toggle button.on{background:var(--teal);color:#fff}
+.vgrid{border:1px solid var(--line);border-radius:10px;padding:12px;background:#fafbfc}
+.vgrid h5{margin:4px 0 8px;font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.vgrid .cells{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.vgrid label{font-size:11.5px;color:var(--muted)}
+.vgrid .input{padding:6px 8px;text-align:right}
+.vgrid .tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.vgrid .tools .input{width:110px;text-align:right}
+.calc{margin-top:6px;padding:10px 12px;border-radius:8px;background:var(--teal-bg);color:var(--teal-2);font-size:13px}
+.note{font-size:12.5px;color:var(--muted);margin-top:-6px;margin-bottom:12px}
+
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:8px;box-shadow:var(--shadow);z-index:60;font-size:13.5px}
+.toast.err{background:var(--neg)}
+.busy{position:fixed;top:56px;left:0;right:0;height:3px;z-index:30;overflow:hidden}
+.busy::after{content:"";position:absolute;inset:0;width:30%;background:var(--teal);animation:bar 1s infinite ease-in-out}
+@keyframes bar{from{left:-30%}to{left:100%}}
+
+/* ---------- responsive ---------- */
+@media (max-width:960px){
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .charts{grid-template-columns:1fr}
+}
+@media (max-width:760px){
+  #app{grid-template-columns:minmax(0,1fr);background:var(--bg)}
+  .side{position:fixed;left:0;top:56px;bottom:0;width:250px;height:auto;z-index:25;transform:translateX(-100%);transition:transform .2s;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+  .side.open{transform:none}
+  .top .menu-btn{display:inline-grid}
+  main{padding:20px 16px 60px}
+  .top{gap:8px;padding:0 10px}
+  .top .brand .bt,.top .sep,.status,#pdfBtn span{display:none}
+  .co-pick{min-width:0;flex:1}
+  #signOut{padding:8px 10px;font-size:13px}
+  .opts,.row2,.row3{grid-template-columns:1fr}
+  .vgrid .cells{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .kpi .v{font-size:20px}
+}
+
+/* ---------- print / PDF ---------- */
+#print{display:none}
+@media print{
+  @page{size:letter landscape;margin:.45in .5in}
+  html,body{background:#fff}
+  #app,#signin,.scrim,.toast,.busy{display:none!important}
+  #print{display:block;font-size:9pt;color:#1d2733}
+  .pg{page-break-after:always;break-after:page}
+  .pg:last-child{page-break-after:auto;break-after:auto}
+  .cover{height:7.3in;display:flex;flex-direction:column;justify-content:space-between;padding:.2in 0}
+  .cover .bar{height:6px;background:linear-gradient(90deg,var(--navy),var(--teal));border-radius:3px}
+  .cover h1{font:600 34pt/1.15 "Source Serif 4",Georgia,serif;color:var(--navy);margin:0 0 8pt}
+  .cover h2{font-weight:500;font-size:15pt;color:var(--teal-2);margin:0}
+  .cover .meta{font-size:10.5pt;color:var(--muted);line-height:1.7}
+  .p-h{display:flex;align-items:baseline;justify-content:space-between;border-bottom:2px solid var(--navy);padding-bottom:5pt;margin-bottom:10pt}
+  .p-h h2{font:600 16pt "Source Serif 4",Georgia,serif;color:var(--navy);margin:0}
+  .p-h span{font-size:8.5pt;color:var(--muted)}
+  .p-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10pt;margin-bottom:14pt}
+  .p-kpis div{border:1px solid var(--line-2);border-radius:6pt;padding:8pt 10pt}
+  .p-kpis b{display:block;font-size:15pt;margin-top:2pt}
+  .p-kpis span{font-size:8pt;color:var(--muted)}
+  .p-charts{display:grid;grid-template-columns:1fr 1fr;gap:14pt}
+  .p-charts img{width:100%;height:auto;border:1px solid var(--line);border-radius:6pt}
+  .p-charts p{margin:0 0 4pt;font-weight:600;font-size:9pt}
+  table.pt{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  table.pt th,table.pt td{padding:2.6pt 4pt;text-align:right;border-bottom:.5pt solid #dde3ea;white-space:nowrap}
+  table.pt th{font-size:7.5pt;color:var(--muted);font-weight:600;border-bottom:1pt solid var(--navy)}
+  table.pt th:first-child,table.pt td:first-child{text-align:left}
+  table.pt.m{font-size:7.4pt}
+  table.pt tr.sec td{font-size:7pt;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;padding-top:6pt}
+  table.pt tr.ind td:first-child{padding-left:12pt}
+  table.pt tr.sub td{font-weight:600}
+  table.pt tr.total td{font-weight:700;border-top:1pt solid #1d2733;border-bottom:0}
+  table.pt tr.dim td{color:var(--muted)}
+  table.pt td.neg{color:var(--neg)}
+  table.pt td.tot{background:#f3f5f8;font-weight:600}
+  .foot{margin-top:8pt;font-size:7.5pt;color:var(--faint)}
+}
+</style>
+</head>
+<body>
+
+<!-- ======================= SIGN IN ======================= -->
+<section id="signin" class="hidden">
+  <div class="si-card">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="9" fill="#12263f"/><path d="M6 26 L15 13 L21 21 L25 16 L34 26 Z" fill="#1c7c8c"/><path d="M6 30 q4 -3 8 0 t8 0 t8 0 t4 0" stroke="#e6f3f5" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+      <div class="bt"><b>Forecaster</b><span>Highland Lake Capital</span></div>
+    </div>
+    <h1>Sign in</h1>
+    <p>We'll email you a link. Click it and you're in — no password.</p>
+    <form id="siForm">
+      <label class="field"><span>Email</span><input class="input" id="siEmail" type="email" autocomplete="email" value="glane@highlandlakecapital.com" required></label>
+      <button class="btn primary block" id="siBtn" type="submit">Email me a sign-in link</button>
+    </form>
+    <div id="siMsg" class="msg hidden"></div>
+  </div>
+</section>
+
+<!-- ======================= APP ======================= -->
+<div id="app" class="hidden">
+  <header class="top">
+    <button class="icon-btn menu-btn" id="menuBtn" style="color:#fff" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="9" fill="#1b3556"/><path d="M6 26 L15 13 L21 21 L25 16 L34 26 Z" fill="#1c7c8c"/><path d="M6 30 q4 -3 8 0 t8 0 t8 0 t4 0" stroke="#e6f3f5" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+      <div class="bt"><b>Forecaster</b><span>Highland Lake Capital</span></div>
+    </div>
+    <span class="sep"></span>
+    <button class="co-pick" id="coPick" title="Switch company"><b id="coName">Companies</b><small id="scName"></small><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
+    <span class="spacer"></span>
+    <span class="status" id="status"></span>
+    <button class="btn primary" id="pdfBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg><span>Download PDF</span></button>
+    <button class="btn" id="signOut" title="Sign out">Sign out</button>
+  </header>
+
+  <nav class="side" id="side"></nav>
+  <main id="main"></main>
+</div>
+
+<div id="print"></div>
+
+<script>
+/* ============================================================
+   Forecaster — LivePlan-style front for the forecast engine.
+   Data lives in Supabase (phonebook project, forecast schema).
+   ============================================================ */
+const SUPABASE_URL = "https://soaazlygbdljhfucqasa.supabase.co";
+const SUPABASE_KEY = "sb_publishable_ChasEqvWuqW2t3XJcU3REA_N26mndAE";
+const API_URL = SUPABASE_URL + "/functions/v1/forecast-app";
+const DEMO = new URLSearchParams(location.search).has("demo");
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS_LONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+let session = null;
+const S = { companies: [], d: null, page: "home", rep: { tab: "pl", view: "annual", year: 0 } };
+let charts = [];
+
+/* ---------- formatting ---------- */
+const money = (v, opts = {}) => {
+  if (v == null || isNaN(v)) return "–";
+  const n = Math.round(+v);
+  const s = "$" + Math.abs(n).toLocaleString("en-US");
+  return n < 0 ? "(" + s + ")" : s;
+};
+const plain = (v) => (v == null || isNaN(v)) ? "" : (+v).toLocaleString("en-US", { maximumFractionDigits: 2 });
+const short = (v) => {
+  const a = Math.abs(v); const sign = v < 0 ? "-" : "";
+  if (a >= 1e6) return sign + "$" + (a / 1e6).toFixed(a >= 1e7 ? 0 : 1) + "M";
+  if (a >= 1e3) return sign + "$" + Math.round(a / 1e3) + "K";
+  return sign + "$" + Math.round(a);
+};
+const monthLabel = (iso) => { const d = new Date(iso + "T00:00:00Z"); return M[d.getUTCMonth()] + " '" + String(d.getUTCFullYear()).slice(2); };
+const monthLong = (iso) => { const d = new Date(iso + "T00:00:00Z"); return MONTHS_LONG[d.getUTCMonth()] + " " + d.getUTCFullYear(); };
+
+/* ---------- UI helpers ---------- */
+function toast(msg, err) {
+  const t = document.createElement("div"); t.className = "toast" + (err ? " err" : ""); t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), err ? 6000 : 2600);
+}
+let busyN = 0;
+function busy(on) {
+  busyN += on ? 1 : -1;
+  let b = document.querySelector(".busy");
+  if (busyN > 0 && !b) { b = document.createElement("div"); b.className = "busy"; document.body.appendChild(b); }
+  if (busyN <= 0 && b) { b.remove(); busyN = 0; }
+}
+
+/* ---------- API ---------- */
+async function api(action, payload = {}) {
+  if (DEMO) return demoApi(action, payload);
+  busy(true);
+  try {
+    const { data: s } = await sb.auth.getSession();
+    if (!s.session) { showSignIn(); throw new Error("Please sign in"); }
+    const r = await fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + s.session.access_token, apikey: SUPABASE_KEY }, body: JSON.stringify({ action, ...payload }) });
+    const j = await r.json().catch(() => ({ error: "Unexpected response" }));
+    if (r.status === 401) { showSignIn(j.error); throw new Error(j.error); }
+    if (!r.ok) throw new Error(j.error || "Something went wrong");
+    return j;
+  } finally { busy(false); }
+}
+
+/* ---------- periods ---------- */
+const fyList = () => [...new Set((S.d?.periods || []).map((p) => p.fyi))].sort((a, b) => a - b);
+const fyLabel = (fyi) => { const p = S.d.periods.find((x) => x.fyi === fyi); return p ? "FY" + p.fy : "FY" + fyi; };
+const monthlyPeriods = () => S.d.periods.filter((p) => p.monthly);
+const annualFys = () => fyList().filter((f) => !S.d.periods.find((p) => p.fyi === f && p.monthly));
+const periodLabel = (pi) => { const p = S.d.periods.find((x) => x.pi === pi); return p ? monthLong(p.month) : "Month " + (pi + 1); };
+const fyTotal = (key, fyi) => S.d.results.filter((r) => S.d.periods.find((p) => p.pi === r.period_index)?.fyi === fyi).reduce((a, r) => a + +r[key], 0);
+const fyEnd = (key, fyi) => { const rs = S.d.results.filter((r) => S.d.periods.find((p) => p.pi === r.period_index)?.fyi === fyi); return rs.length ? +rs[rs.length - 1][key] : null; };
+
+/* ============================================================
+   AUTH
+   ============================================================ */
+function showSignIn(msg) {
+  $("app").classList.add("hidden"); $("signin").classList.remove("hidden");
+  if (msg) { const m = $("siMsg"); m.textContent = msg; m.className = "msg err"; }
+}
+$("siForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = $("siEmail").value.trim().toLowerCase();
+  const btn = $("siBtn"); btn.disabled = true; btn.textContent = "Sending…";
+  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+  btn.disabled = false; btn.textContent = "Email me a sign-in link";
+  const m = $("siMsg");
+  if (error) { m.textContent = error.message; m.className = "msg err"; }
+  else { m.textContent = "Check your inbox at " + email + " and click the link. You can close this tab."; m.className = "msg"; }
+});
+$("signOut").addEventListener("click", async () => { await sb.auth.signOut(); location.hash = ""; showSignIn(); });
+
+async function boot() {
+  if (DEMO) { startApp(); return; }
+  const { data } = await sb.auth.getSession();
+  session = data.session;
+  if (!session) { showSignIn(); return; }
+  startApp();
+}
+sb.auth.onAuthStateChange((ev, s) => { if (ev === "SIGNED_IN" && !session) { session = s; startApp(); } });
+
+async function startApp() {
+  $("signin").classList.add("hidden"); $("app").classList.remove("hidden");
+  try {
+    S.companies = await api("list");
+    const last = localGet("fc.lastScenario");
+    const hit = S.companies.find((c) => c.scenario_id === last);
+    if (hit) await openScenario(hit.scenario_id, localGet("fc.lastPage") || "overview");
+    else go("home");
+  } catch (e) { toast(e.message, true); }
+}
+function localGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+function localSet(k, v) { try { localStorage.setItem(k, v); } catch {} }
+
+/* ============================================================
+   NAV
+   ============================================================ */
+const ICON = {
+  home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+  overview: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  revenue: '<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
+  direct_costs: '<path d="M20 7H4v12h16zM8 7V5h8v2M4 12h16"/>',
+  personnel: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/>',
+  expenses: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/>',
+  assets: '<path d="M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6"/>',
+  financing: '<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>',
+  taxes: '<path d="M19 5L5 19M7 8.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17 18.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/>',
+  cash: '<path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+  pl: '<path d="M4 4h16v16H4zM4 9h16M9 9v11"/>',
+  bs: '<path d="M12 3v18M5 7h14M3 13l2-6 2 6a2 2 0 0 1-4 0zM17 13l2-6 2 6a2 2 0 0 1-4 0z"/>',
+  cf: '<path d="M4 7h13l-3-3M20 17H7l3 3"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
+  trash: '<path d="M4 7h16M10 11v6M14 11v6M5 7l1 13h12l1-13M9 7V4h6v3"/>',
+};
+const icon = (k) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICON[k] || ""}</svg>`;
+
+const NAV = [
+  { h: "Forecast" },
+  { k: "overview", t: "Overview" },
+  { k: "revenue", t: "Revenue" },
+  { k: "direct_costs", t: "Direct Costs", soon: true },
+  { k: "personnel", t: "Personnel" },
+  { k: "expenses", t: "Expenses" },
+  { k: "assets", t: "Assets", soon: true },
+  { k: "financing", t: "Financing", soon: true },
+  { k: "taxes", t: "Taxes", soon: true },
+  { k: "cash", t: "Cash Flow Settings", soon: true },
+  { h: "Reports" },
+  { k: "pl", t: "Profit & Loss" },
+  { k: "bs", t: "Balance Sheet" },
+  { k: "cf", t: "Cash Flow" },
+  { h: "Company" },
+  { k: "settings", t: "Company Setup" },
+  { k: "home", t: "All Companies" },
+];
+function renderNav() {
+  const inCo = !!S.d;
+  $("side").innerHTML = NAV.map((n) => {
+    if (n.h) return inCo ? `<h6>${n.h}</h6>` : "";
+    if (!inCo && n.k !== "home") return "";
+    return `<button class="nav${S.page === n.k ? " on" : ""}${n.soon ? " dim" : ""}" data-k="${n.k}">${icon(n.k)}<span>${n.t}</span>${n.soon ? '<span class="soon">Soon</span>' : ""}</button>`;
+  }).join("");
+  $("coName").textContent = inCo ? S.d.company.name : "Companies";
+  $("scName").textContent = inCo && S.d.scenarios?.length > 1 ? "· " + S.d.scenario.name : "";
+  $("pdfBtn").classList.toggle("hidden", !inCo);
+  $("status").textContent = inCo && S.d.scenario.last_recalc_at ? "Updated " + new Date(S.d.scenario.last_recalc_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
+}
+$("side").addEventListener("click", (e) => {
+  const b = e.target.closest(".nav"); if (!b) return;
+  $("side").classList.remove("open");
+  go(b.dataset.k);
+});
+$("menuBtn").addEventListener("click", () => $("side").classList.toggle("open"));
+$("coPick").addEventListener("click", () => go("home"));
+$("pdfBtn").addEventListener("click", () => buildPdf());
+
+function go(page) {
+  if (page === "home") { S.d = null; refreshList(); }
+  if (["pl", "bs", "cf"].includes(page)) S.rep.tab = page;
+  S.page = page; localSet("fc.lastPage", page);
+  renderNav(); render(); window.scrollTo(0, 0);
+}
+async function refreshList() { try { S.companies = await api("list"); if (S.page === "home") render(); } catch (e) { toast(e.message, true); } }
+async function openScenario(sid, page = "overview") {
+  try { S.d = await api("get", { scenario_id: sid }); localSet("fc.lastScenario", sid); go(page); }
+  catch (e) { toast(e.message, true); go("home"); }
+}
+function setData(d, msg) { S.d = d; renderNav(); render(); if (msg) toast(msg); }
+
+/* ============================================================
+   PAGES
+   ============================================================ */
+function render() {
+  charts.forEach((c) => c.destroy()); charts = [];
+  const m = $("main");
+  const p = S.page;
+  if (p === "home" || !S.d) return (m.innerHTML = pageHome());
+  if (p === "overview") { m.innerHTML = pageOverview(); drawOverviewCharts(); return; }
+  if (p === "revenue" || p === "personnel" || p === "expenses") return (m.innerHTML = pageSection(p));
+  if (["pl", "bs", "cf"].includes(p)) return (m.innerHTML = pageReport());
+  if (p === "settings") return (m.innerHTML = pageSettings());
+  const n = NAV.find((x) => x.k === p);
+  m.innerHTML = `<div class="ph"><div><h1>${esc(n?.t || "")}</h1><p>This section is coming in Round 2.</p></div></div>
+    <div class="card"><div class="empty"><b>Coming soon</b>Revenue, Personnel and Expenses are ready now. ${esc(n?.t || "")} arrives in the next round.</div></div>`;
+}
+
+/* ---------- Home: company list ---------- */
+function pageHome() {
+  const cos = S.companies.filter((c) => c.status !== "archived");
+  return `<div class="ph"><div><h1>Your companies</h1><p>Pick a company to work on its forecast, or start a new one.</p></div></div>
+  <div class="cos">
+    ${cos.map((c) => `<button class="co-card" data-open="${c.scenario_id}">
+        <h3>${esc(c.name)}</h3><p>${esc(c.description || "")}</p>
+        <div class="row"><div>Revenue, first year<b class="num">${c.revenue_y1 == null ? "–" : money(c.revenue_y1)}</b></div>
+        <div>Net profit, first year<b class="num ${+c.net_profit_y1 < 0 ? "neg" : ""}">${c.net_profit_y1 == null ? "–" : money(c.net_profit_y1)}</b></div></div>
+      </button>`).join("")}
+    <button class="co-card co-new" data-act="new-company">+ New company</button>
+  </div>`;
+}
+
+/* ---------- Overview ---------- */
+function pageOverview() {
+  const d = S.d, fys = fyList();
+  if (!d.revenue.length && !d.personnel.length && !d.expenses.length) {
+    return `<div class="ph"><div><h1>${esc(d.company.name)}</h1><p>Forecast starts ${monthLong(d.company.forecast_start_month)}.</p></div></div>
+    <div class="card"><div class="empty"><b>Let's build this forecast</b>Start with how the company makes money.<br><br><button class="btn primary" data-go="revenue">Add revenue</button></div></div>`;
+  }
+  const f0 = fys.find((f) => d.periods.filter((p) => p.fyi === f).length === 12) ?? fys[0];
+  const rev = fyTotal("revenue", f0), np = fyTotal("net_profit", f0), cashEnd = fyEnd("cash", f0);
+  let low = Infinity, lowP = null; d.results.forEach((r) => { if (+r.cash < low) { low = +r.cash; lowP = r; } });
+  const gm = rev ? (fyTotal("gross_profit", f0) / rev) * 100 : 0;
+  return `<div class="ph"><div><h1>${esc(d.company.name)}</h1><p>${esc(d.company.description || "Forecast starts " + monthLong(d.company.forecast_start_month) + ".")}</p></div></div>
+  <div class="kpis">
+    <div class="card kpi"><div class="l">Revenue · ${fyLabel(f0)}</div><div class="v num">${money(rev)}</div><div class="s">Gross margin ${gm.toFixed(0)}%</div></div>
+    <div class="card kpi"><div class="l">Net profit · ${fyLabel(f0)}</div><div class="v num ${np < 0 ? "neg" : ""}">${money(np)}</div><div class="s">${rev ? ((np / rev) * 100).toFixed(1) + "% of revenue" : ""}</div></div>
+    <div class="card kpi"><div class="l">Cash at end of ${fyLabel(f0)}</div><div class="v num ${cashEnd < 0 ? "neg" : ""}">${money(cashEnd)}</div><div class="s">&nbsp;</div></div>
+    <div class="card kpi"><div class="l">Lowest cash</div><div class="v num ${low < 0 ? "neg" : ""}">${money(low)}</div><div class="s">${lowP ? monthLong(lowP.month_start) : ""}</div></div>
+  </div>
+  <div class="charts">
+    <div class="card"><div class="card-h"><h3>Revenue by month</h3></div><div class="card-b"><div class="chart-box"><canvas id="chRev"></canvas></div></div></div>
+    <div class="card"><div class="card-h"><h3>Cash on hand</h3></div><div class="card-b"><div class="chart-box"><canvas id="chCash"></canvas></div></div></div>
+    <div class="card"><div class="card-h"><h3>Net profit by year</h3></div><div class="card-b"><div class="chart-box"><canvas id="chNp"></canvas></div></div></div>
+    <div class="card"><div class="card-h"><h3>Where the money goes · ${fyLabel(f0)}</h3></div><div class="card-b"><div class="chart-box"><canvas id="chMix"></canvas></div></div></div>
+  </div>`;
+}
+function chartDefs() {
+  const d = S.d, fys = fyList();
+  const mp = d.periods.filter((p) => p.monthly);
+  const res = (pi) => d.results.find((r) => r.period_index === pi);
+  const f0 = fys.find((f) => d.periods.filter((p) => p.fyi === f).length === 12) ?? fys[0];
+  return {
+    rev: { type: "bar", data: { labels: mp.map((p) => monthLabel(p.month)), datasets: [{ label: "Revenue", data: mp.map((p) => +res(p.pi).revenue), backgroundColor: "#1c7c8c", borderRadius: 3 }] } },
+    cash: { type: "line", data: { labels: d.periods.map((p) => monthLabel(p.month)), datasets: [{ label: "Cash", data: d.periods.map((p) => +res(p.pi).cash), borderColor: "#12263f", backgroundColor: "rgba(28,124,140,.12)", fill: true, tension: .25, pointRadius: 0, borderWidth: 2 }] } },
+    np: { type: "bar", data: { labels: fys.map(fyLabel), datasets: [{ label: "Net profit", data: fys.map((f) => fyTotal("net_profit", f)), backgroundColor: fys.map((f) => (fyTotal("net_profit", f) < 0 ? "#b42318" : "#12263f")), borderRadius: 3 }] } },
+    mix: { type: "bar", data: { labels: ["Direct costs", "Salaries & wages", "Taxes & benefits", "Expenses", "Net profit"], datasets: [{ data: [fyTotal("direct_costs", f0), fyTotal("opex_labor", f0), fyTotal("opex_burden", f0), fyTotal("opex_expenses", f0), fyTotal("net_profit", f0)], backgroundColor: ["#7fb3bd", "#1c7c8c", "#c08a2e", "#8a99a8", "#12263f"], borderRadius: 3 }] }, horizontal: true },
+  };
+}
+function chartOpts(horizontal, anim = true) {
+  const axisMoney = { ticks: { callback: (v) => short(v), color: "#66727f", font: { size: 11 } }, grid: { color: "#eef1f4" }, border: { display: false } };
+  const axisCat = { ticks: { color: "#66727f", font: { size: 11 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 }, grid: { display: false }, border: { color: "#cfd7e0" } };
+  return { responsive: true, maintainAspectRatio: false, animation: anim ? { duration: 400 } : false, indexAxis: horizontal ? "y" : "x",
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => money(horizontal ? c.parsed.x : c.parsed.y) } } },
+    scales: horizontal ? { x: axisMoney, y: { ...axisCat, ticks: { color: "#1d2733", font: { size: 12 } } } } : { x: axisCat, y: axisMoney } };
+}
+function drawOverviewCharts() {
+  if (!$("chRev")) return;
+  const defs = chartDefs();
+  [["chRev", defs.rev], ["chCash", defs.cash], ["chNp", defs.np], ["chMix", defs.mix]].forEach(([id, def]) => {
+    charts.push(new Chart($(id), { type: def.type, data: def.data, options: chartOpts(def.horizontal) }));
+  });
+}
+
+/* ---------- Section pages (Revenue / Personnel / Expenses) ---------- */
+const SECTION = {
+  revenue: { title: "Revenue", key: "revenue", table: "revenue_streams", add: "Add revenue stream", lede: "How the company makes money. Each stream is something you sell or bill for.", emptyB: "No revenue streams yet", emptyT: "Add the first way this company makes money — for example care hours billed to the VA." },
+  personnel: { title: "Personnel", key: "personnel", table: "personnel", add: "Add employee", lede: "Everyone you pay. Caregivers and anyone else who delivers the service count as direct labor.", emptyB: "No employees yet", emptyT: "Add people one at a time, or a group like “Caregivers”." },
+  expenses: { title: "Expenses", key: "expenses", table: "expenses", add: "Add expense", lede: "Rent, marketing, software, insurance and everything else it takes to run the business.", emptyB: "No expenses yet", emptyT: "Add rent, marketing and the other regular costs." },
+};
+function describe(kind, it) {
+  const d = S.d;
+  const per = (p) => (p === "year" ? "/yr" : "/mo");
+  const startTxt = it.start_month != null && it.start_month > 0 ? " · starts " + periodLabel(it.start_month) : "";
+  if (kind === "revenue") {
+    const T = { hours: "Billable hours", unit: "Unit sales", recurring: "Recurring charges", revenue_only: "Revenue only" }[it.type];
+    let s = "";
+    if (it.type === "hours") s = (it.qty_mode === "varying" ? "Hours vary" : plain(it.qty_constant) + " hrs" + per(it.qty_per)) + " × " + (it.price_mode === "varying" ? "varying rate" : money(it.price_constant) + "/hr");
+    if (it.type === "unit") s = (it.qty_mode === "varying" ? "Units vary" : plain(it.qty_constant) + " units" + per(it.qty_per)) + " × " + (it.price_mode === "varying" ? "varying price" : money(it.price_constant));
+    if (it.type === "recurring") s = (it.qty_mode === "varying" ? "Sign-ups vary" : plain(it.qty_constant) + " new/mo") + " · " + money(it.price_constant) + (it.charge_frequency_months > 1 ? " every " + it.charge_frequency_months + " mo" : "/mo") + " · " + plain(it.churn_constant) + "% churn";
+    if (it.type === "revenue_only") s = it.qty_mode === "varying" ? "Amount varies by month" : money(it.qty_constant) + per(it.qty_per);
+    return T + " · " + s + startTxt;
+  }
+  if (kind === "personnel") {
+    const who = it.personnel_type === "group" ? (it.headcount_mode === "varying" ? "Group, headcount varies" : "Group of " + plain(it.headcount_constant)) : "Individual";
+    let pay = "";
+    if (it.pay_mode === "constant") pay = money(it.pay_amount) + per(it.pay_per) + (it.personnel_type === "group" ? " each" : "");
+    if (it.pay_mode === "varying") pay = "Pay varies";
+    if (it.pay_mode === "pct_overall") pay = plain(it.pct) + "% of all revenue";
+    if (it.pay_mode === "pct_stream") { const st = d.revenue.find((r) => r.id === it.stream_id); pay = plain(it.pct) + "% of " + (st ? st.name : "a revenue stream"); }
+    return [who, it.labor_type === "direct" ? "Direct labor" : "Regular", it.staffing === "contract" ? "Contractor" : null, pay].filter(Boolean).join(" · ") + startTxt;
+  }
+  if (kind === "expenses") {
+    const T = { rent: "Rent", marketing: "Marketing", other: "Other", employee_taxes: "Employee taxes" }[it.expense_type] || "Other";
+    let s = "";
+    if (it.mode === "amount") s = it.amount_mode === "varying" ? "Amount varies" : money(it.amount) + per(it.per);
+    if (it.mode === "pct_overall") s = plain(it.pct) + "% of all revenue";
+    if (it.mode === "pct_stream") { const st = d.revenue.find((r) => r.id === it.stream_id); s = plain(it.pct) + "% of " + (st ? st.name : "a revenue stream"); }
+    return T + " · " + s + startTxt;
+  }
+}
+function pageSection(kind) {
+  const cfg = SECTION[kind], d = S.d, items = d[cfg.key], fys = fyList();
+  const tot = (it, f) => +(d.item_totals[it.id]?.[f] ?? 0);
+  let body;
+  if (!items.length) body = `<div class="empty"><b>${cfg.emptyB}</b>${cfg.emptyT}<br><br><button class="btn primary" data-act="add" data-kind="${kind}">+ ${cfg.add}</button></div>`;
+  else body = `<div class="tbl-wrap"><table class="t"><thead><tr><th>${kind === "personnel" ? "Name" : kind === "revenue" ? "Revenue stream" : "Expense"}</th>${fys.map((f) => `<th>${fyLabel(f)}</th>`).join("")}<th></th></tr></thead><tbody>
+      ${items.map((it) => `<tr class="item"><td><span class="nm">${esc(it.name)}</span><span class="sub">${esc(describe(kind, it))}</span></td>
+        ${fys.map((f) => `<td class="num">${money(tot(it, f))}</td>`).join("")}
+        <td class="act"><button class="icon-btn" title="Edit" data-act="edit" data-kind="${kind}" data-id="${it.id}">${icon("edit")}</button><button class="icon-btn" title="Delete" data-act="del" data-kind="${kind}" data-id="${it.id}">${icon("trash")}</button></td></tr>`).join("")}
+      <tr class="total"><td>Total ${cfg.title.toLowerCase()}</td>${fys.map((f) => `<td class="num">${money(items.reduce((a, it) => a + tot(it, f), 0))}</td>`).join("")}<td></td></tr>
+    </tbody></table></div>`;
+  let extra = "";
+  if (kind === "personnel") {
+    const b = d.burden || { rate: 0 };
+    const burdenTot = fys.map((f) => fyTotal("opex_burden", f));
+    extra = `<div class="card"><div class="card-h"><h3>Employee taxes &amp; benefits</h3></div><div class="card-b">
+      <div class="burden"><span>Add</span><div class="pct"><input class="input num" id="burdenRate" inputmode="decimal" value="${plain(b.rate)}"></div><span>on top of on-staff pay for payroll taxes, workers' comp and benefits.</span><button class="btn" data-act="save-burden">Save</button></div>
+      <p class="hint" style="margin:10px 0 0">Typical home care agencies land around 12–20%. ${fys.map((f, i) => `${fyLabel(f)}: <b class="num">${money(burdenTot[i])}</b>`).join(" · ")}</p>
+    </div></div>`;
+  }
+  return `<div class="ph"><div><h1>${cfg.title}</h1><p>${cfg.lede}</p></div><span class="spacer"></span>${items.length ? `<button class="btn primary" data-act="add" data-kind="${kind}">+ ${cfg.add}</button>` : ""}</div>
+    <div class="card">${body}</div>${extra}`;
+}
+
+/* ---------- Reports ---------- */
+const PL = [["sec","Revenue"],["ind","Revenue","revenue"],["ind","Direct costs","direct_costs"],["sub","Gross profit","gross_profit"],["dim ind","Gross margin %","gross_margin_pct","pct"],
+ ["sec","Operating expenses"],["ind","Salaries & wages","opex_labor"],["ind","Employee taxes & benefits","opex_burden"],["ind","Expenses","opex_expenses"],["ind","Amortization","opex_amortization"],["sub","Total operating expenses","total_opex"],
+ ["sub","Operating income","operating_income"],["ind","Interest expense","interest_expense"],["ind","Depreciation","depreciation"],["ind","Gain on sale of assets","gain_on_sale"],["ind","Income taxes","income_taxes"],
+ ["total","Net profit","net_profit"],["dim ind","Net profit margin %","net_profit_margin_pct","pct"]];
+const BS = [["sec","Assets"],["ind","Cash","cash"],["ind","Accounts receivable","accounts_receivable"],["ind","Inventory","inventory"],["ind","Other current assets","other_current_assets"],["sub","Total current assets","total_current_assets"],
+ ["ind","Long-term assets","lt_assets_gross"],["ind","Accumulated depreciation","accumulated_depreciation"],["sub","Total long-term assets","total_lt_assets"],["total","Total assets","total_assets"],
+ ["sec","Liabilities & equity"],["ind","Accounts payable","accounts_payable"],["ind","Income taxes payable","income_tax_payable"],["ind","Sales taxes payable","sales_tax_payable"],["ind","Prepaid revenue","prepaid_revenue"],["ind","Short-term debt","short_term_debt"],["sub","Total current liabilities","total_current_liabilities"],
+ ["ind","Long-term debt","long_term_debt"],["sub","Total liabilities","total_liabilities"],["ind","Paid-in capital","paid_in_capital"],["ind","Retained earnings","retained_earnings"],["ind","Earnings","earnings"],["sub","Total equity","total_equity"],["total","Total liabilities & equity","total_liabilities_equity"]];
+const CF = [["sec","Operations"],["ind","Net profit","cf_net_profit"],["ind","Depreciation & amortization","cf_depreciation_amortization"],["ind","Change in accounts receivable","cf_change_ar"],["ind","Change in inventory","cf_change_inventory"],["ind","Change in accounts payable","cf_change_ap"],["ind","Change in income tax payable","cf_change_income_tax"],["ind","Change in sales tax payable","cf_change_sales_tax"],["ind","Change in prepaid revenue","cf_change_prepaid"],["sub","Net cash from operations","cf_operations"],
+ ["sec","Investing"],["ind","Assets purchased or sold","cf_assets_purchased_sold"],["sub","Net cash from investing","cf_investing"],
+ ["sec","Financing"],["ind","Investments received","cf_investments_received"],["ind","Dividends & distributions","cf_distributions"],["ind","Change in short-term debt","cf_change_st_debt"],["ind","Change in long-term debt","cf_change_lt_debt"],["sub","Net cash from financing","cf_financing"],
+ ["sub","Cash at beginning of period","cash_beginning"],["ind","Net change in cash","net_change_cash"],["total","Cash at end of period","cash"]];
+const BALANCE = new Set(BS.map((r) => r[2]).filter(Boolean).concat(["cash"]));
+const PCT = new Set(["gross_margin_pct", "net_profit_margin_pct"]);
+const ZERO_HIDE = new Set(["opex_amortization","interest_expense","depreciation","gain_on_sale","inventory","other_current_assets","lt_assets_gross","accumulated_depreciation","total_lt_assets","prepaid_revenue","short_term_debt","long_term_debt","sales_tax_payable","cf_change_inventory","cf_change_prepaid","cf_change_sales_tax","cf_assets_purchased_sold","cf_investments_received","cf_distributions","cf_change_st_debt","cf_change_lt_debt"]);
+
+function aggCol(ps, key) {
+  const rows = ps.map((p) => S.d.results.find((r) => r.period_index === p.pi)).filter(Boolean);
+  if (!rows.length) return null;
+  if (PCT.has(key)) { const rev = rows.reduce((a, r) => a + +r.revenue, 0); const num = rows.reduce((a, r) => a + +(key === "gross_margin_pct" ? r.gross_profit : r.net_profit), 0); return rev ? (num / rev) * 100 : 0; }
+  if (key === "cash_beginning") return +rows[0].cash_beginning;
+  if (BALANCE.has(key)) return +rows[rows.length - 1][key];
+  return rows.reduce((a, r) => a + +r[key], 0);
+}
+function reportCols(view, year) {
+  const P = S.d.periods, fys = fyList();
+  if (view === "annual") return fys.map((f) => ({ label: fyLabel(f), ps: P.filter((p) => p.fyi === f) }));
+  const ps = P.filter((p) => p.fyi === year);
+  if (ps.length && !ps[0].monthly) return [{ label: fyLabel(year), ps }];
+  return ps.map((p) => ({ label: monthLabel(p.month), ps: [p] }));
+}
+function fmtCell(v, kind) { if (v == null) return ""; if (kind === "pct") return (Math.round(v * 10) / 10).toFixed(1) + "%"; const n = Math.round(v); return n < 0 ? "(" + Math.abs(n).toLocaleString("en-US") + ")" : n.toLocaleString("en-US"); }
+function statementTable(rows, view, year, cls = "t st") {
+  const cols = reportCols(view, year);
+  const showTotal = view === "monthly" && cols.length > 1;
+  const yearCol = S.d.periods.filter((p) => p.fyi === year);
+  const visible = rows.filter(([c, l, key]) => !key || !ZERO_HIDE.has(key) || S.d.results.some((r) => Math.round(+r[key]) !== 0));
+  // drop empty section headers
+  const out = visible.filter((r, i) => r[2] || (visible[i + 1] && visible[i + 1][2]));
+  let h = `<table class="${cls}"><thead><tr><th></th>${cols.map((c) => `<th>${c.label}</th>`).join("")}${showTotal ? "<th>Total</th>" : ""}</tr></thead><tbody>`;
+  for (const [c, label, key, kind] of out) {
+    if (!key) { h += `<tr class="${c}"><td colspan="${cols.length + 1 + (showTotal ? 1 : 0)}">${esc(label)}</td></tr>`; continue; }
+    h += `<tr class="${c}"><td>${esc(label)}</td>` + cols.map((col) => { const v = aggCol(col.ps, key); return `<td class="num ${v < 0 ? "neg" : ""}">${fmtCell(v, kind)}</td>`; }).join("");
+    if (showTotal) { const v = aggCol(yearCol, key); h += `<td class="num tot ${v < 0 ? "neg" : ""}">${fmtCell(v, kind)}</td>`; }
+    h += "</tr>";
+  }
+  return h + "</tbody></table>";
+}
+function pageReport() {
+  const r = S.rep, fys = fyList();
+  if (!fys.includes(r.year)) r.year = fys[0] ?? 0;
+  const T = { pl: ["Profit & Loss", PL], bs: ["Balance Sheet", BS], cf: ["Cash Flow", CF] }[r.tab];
+  return `<div class="ph"><div><h1>${T[0]}</h1><p>${esc(S.d.company.name)} · ${esc(S.d.scenario.name)} scenario</p></div><span class="spacer"></span>
+    <div class="seg" data-rep="view"><button data-v="annual" class="${r.view === "annual" ? "on" : ""}">Yearly</button><button data-v="monthly" class="${r.view === "monthly" ? "on" : ""}">Monthly</button></div></div>
+    ${r.view === "monthly" ? `<div class="chips" style="margin-bottom:12px">${fys.map((f) => `<button class="chip ${f === r.year ? "on" : ""}" data-year="${f}">${fyLabel(f)}</button>`).join("")}</div>` : ""}
+    <div class="card"><div class="tbl-wrap">${statementTable(T[1], r.view, r.year)}</div></div>`;
+}
+
+/* ---------- Company setup ---------- */
+function monthOptions(selectedIso) {
+  const out = []; const now = new Date(); const base = new Date(Date.UTC(now.getUTCFullYear() - 2, 0, 1));
+  for (let i = 0; i < 72; i++) { const d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + i, 1)); const iso = d.toISOString().slice(0, 10); out.push(`<option value="${iso}" ${iso === selectedIso ? "selected" : ""}>${MONTHS_LONG[d.getUTCMonth()]} ${d.getUTCFullYear()}</option>`); }
+  return out.join("");
+}
+function pageSettings() {
+  const c = S.d.company;
+  return `<div class="ph"><div><h1>Company setup</h1><p>The basics that shape the whole forecast.</p></div></div>
+  <div class="card"><div class="card-b"><form id="coForm">
+    <div class="row2"><label class="field"><span>Company name</span><input class="input" name="name" value="${esc(c.name)}" required></label>
+    <label class="field"><span>Short description (shows on the PDF cover)</span><input class="input" name="description" value="${esc(c.description || "")}"></label></div>
+    <div class="row3"><label class="field"><span>Forecast starts</span><select class="select" name="start">${monthOptions(c.forecast_start_month)}</select></label>
+    <label class="field"><span>Fiscal year starts in</span><select class="select" name="fy_start">${MONTHS_LONG.map((m, i) => `<option value="${i + 1}" ${c.fiscal_year_start_month === i + 1 ? "selected" : ""}>${m}</option>`).join("")}</select></label>
+    <label class="field"><span>Forecast length</span><select class="select" name="years"><option value="3" ${c.forecast_years === 3 ? "selected" : ""}>3 years</option><option value="5" ${c.forecast_years === 5 ? "selected" : ""}>5 years</option></select></label></div>
+    <button class="btn primary" type="submit">Save changes</button>
+  </form></div></div>
+  <div class="card"><div class="card-h"><h3>Delete this company</h3></div><div class="card-b" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    <span class="hint" style="flex:1;min-width:220px">Removes the company and its whole forecast. This can't be undone.</span>
+    <button class="btn danger" data-act="del-company">Delete company</button></div></div>`;
+}
+
+/* ============================================================
+   CLICK HANDLING
+   ============================================================ */
+document.addEventListener("click", async (e) => {
+  const t = e.target.closest("[data-open],[data-act],[data-go],[data-v],[data-year]");
+  if (!t) return;
+  if (t.dataset.open) return openScenario(t.dataset.open);
+  if (t.dataset.go) return go(t.dataset.go);
+  if (t.dataset.v && t.closest('[data-rep="view"]')) { S.rep.view = t.dataset.v; return render(); }
+  if (t.dataset.year != null && t.classList.contains("chip")) { S.rep.year = +t.dataset.year; return render(); }
+  const a = t.dataset.act;
+  if (a === "new-company") return wizCompany();
+  if (a === "add") return openWizard(t.dataset.kind);
+  if (a === "edit") { const it = S.d[SECTION[t.dataset.kind].key].find((x) => x.id === t.dataset.id); return openWizard(t.dataset.kind, it); }
+  if (a === "del") {
+    const cfg = SECTION[t.dataset.kind]; const it = S.d[cfg.key].find((x) => x.id === t.dataset.id);
+    if (!confirm(`Delete “${it.name}”?`)) return;
+    try { setData(await api("delete_item", { table: cfg.table, scenario_id: S.d.scenario.id, id: it.id }), "Deleted"); } catch (err) { toast(err.message, true); }
+  }
+  if (a === "save-burden") {
+    const v = parseNum($("burdenRate").value);
+    try { setData(await api("save_settings", { table: "burden_settings", scenario_id: S.d.scenario.id, values: { mode: "constant", rate: v ?? 0 } }), "Saved"); } catch (err) { toast(err.message, true); }
+  }
+  if (a === "del-company") {
+    const name = S.d.company.name;
+    const typed = prompt(`Type the company name to delete it:\n${name}`);
+    if (typed == null) return;
+    if (typed.trim() !== name) return toast("Name didn't match — nothing deleted.", true);
+    try { await api("delete_company", { company_id: S.d.company.id }); localSet("fc.lastScenario", ""); toast("Deleted " + name); go("home"); } catch (err) { toast(err.message, true); }
+  }
+});
+document.addEventListener("submit", async (e) => {
+  if (e.target.id !== "coForm") return;
+  e.preventDefault();
+  const f = new FormData(e.target);
+  try { setData(await api("update_company", { scenario_id: S.d.scenario.id, name: f.get("name"), description: f.get("description"), start: f.get("start"), fy_start: +f.get("fy_start"), years: +f.get("years") }), "Saved"); } catch (err) { toast(err.message, true); }
+});
+const parseNum = (s) => { if (s == null) return null; const t = String(s).replace(/[,$%\s]/g, ""); if (t === "") return null; const n = Number(t); return Number.isFinite(n) ? n : null; };
+
+/* ============================================================
+   WIZARD ENGINE
+   A wizard is a list of steps. Each step renders HTML from the
+   working object W and reads its inputs back on Next.
+   ============================================================ */
+let WZ = null;
+function wizard(cfg) {
+  WZ = { ...cfg, i: 0 };
+  const el = document.createElement("div"); el.className = "scrim"; el.id = "wiz";
+  el.innerHTML = `<div class="wiz" role="dialog" aria-modal="true"><div class="wiz-h"><b id="wzTitle"></b><div class="steps" id="wzSteps"></div><button class="icon-btn" id="wzX" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="wiz-b" id="wzBody"></div><div class="wiz-f"><button class="btn ghost" id="wzBack">Back</button><span class="spacer"></span><button class="btn" id="wzCancel">Cancel</button><button class="btn primary" id="wzNext">Next</button></div></div>`;
+  document.body.appendChild(el);
+  $("wzX").onclick = $("wzCancel").onclick = closeWizard;
+  el.addEventListener("mousedown", (e) => { if (e.target === el) closeWizard(); });
+  $("wzBack").onclick = () => { readStep(); WZ.i = prevIndex(WZ.i); drawStep(); };
+  $("wzNext").onclick = nextStep;
+  el.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.tagName === "INPUT" && !e.target.closest(".vgrid")) { e.preventDefault(); nextStep(); } if (e.key === "Escape") closeWizard(); });
+  drawStep();
+}
+const activeSteps = () => WZ.steps.filter((s) => !s.when || s.when(WZ.W));
+function prevIndex(i) { for (let j = i - 1; j >= 0; j--) if (!WZ.steps[j].when || WZ.steps[j].when(WZ.W)) return j; return i; }
+function nextIndex(i) { for (let j = i + 1; j < WZ.steps.length; j++) if (!WZ.steps[j].when || WZ.steps[j].when(WZ.W)) return j; return -1; }
+function closeWizard() { $("wiz")?.remove(); WZ = null; }
+function drawStep() {
+  const st = WZ.steps[WZ.i]; const act = activeSteps(); const pos = act.indexOf(st);
+  $("wzTitle").textContent = WZ.title;
+  $("wzSteps").innerHTML = act.map((s, k) => `<i class="${k <= pos ? "on" : ""}"></i>`).join("");
+  $("wzBody").innerHTML = `<h2>${st.q(WZ.W)}</h2>${st.lede ? `<p class="lede">${st.lede(WZ.W)}</p>` : ""}<div id="wzStep">${st.html(WZ.W)}</div>`;
+  $("wzBack").style.visibility = pos > 0 ? "visible" : "hidden";
+  $("wzNext").textContent = nextIndex(WZ.i) === -1 ? (WZ.saveLabel || "Save") : "Next";
+  st.after && st.after(WZ.W);
+  const first = $("wzBody").querySelector("input:not([type=hidden]),select"); if (first) setTimeout(() => first.focus(), 30);
+}
+function readStep() { const st = WZ.steps[WZ.i]; st.read && st.read(WZ.W); }
+async function nextStep() {
+  readStep();
+  const st = WZ.steps[WZ.i];
+  const err = st.check && st.check(WZ.W);
+  if (err) return toast(err, true);
+  const n = nextIndex(WZ.i);
+  if (n !== -1) { WZ.i = n; return drawStep(); }
+  const btn = $("wzNext"); btn.disabled = true; btn.textContent = "Saving…";
+  try { await WZ.save(WZ.W); closeWizard(); } catch (e) { toast(e.message, true); btn.disabled = false; btn.textContent = WZ.saveLabel || "Save"; }
+}
+
+/* ---- building blocks ---- */
+const val = (id) => $(id)?.value;
+const optCards = (name, cur, opts) => `<div class="opts">${opts.map((o) => `<button type="button" class="opt ${cur === o.v ? "on" : ""}" data-pick="${name}" data-val="${o.v}"><b>${o.t}</b><span>${o.d || ""}</span></button>`).join("")}</div>`;
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-pick]"); if (!b || !WZ) return;
+  WZ.W[b.dataset.pick] = b.dataset.val;
+  b.parentElement.querySelectorAll(".opt").forEach((x) => x.classList.toggle("on", x === b));
+  const st = WZ.steps[WZ.i]; if (st.autoNext) nextStep(); else if (st.rerender) { readStep(); drawStep(); }
+});
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-tog]"); if (!b || !WZ) return;
+  readStep(); WZ.W[b.dataset.tog] = b.dataset.val; drawStep();
+});
+const toggle = (key, cur, opts) => `<div class="toggle">${opts.map((o) => `<button type="button" class="${cur === o.v ? "on" : ""}" data-tog="${key}" data-val="${o.v}">${o.t}</button>`).join("")}</div>`;
+const startOptions = (cur) => S.d.periods.map((p) => `<option value="${p.pi}" ${(cur ?? 0) === p.pi ? "selected" : ""}>${monthLong(p.month)}</option>`).join("");
+const streamOptions = (cur) => S.d.revenue.map((r) => `<option value="${r.id}" ${cur === r.id ? "selected" : ""}>${esc(r.name)}</option>`).join("");
+
+/* Varying grid: monthly inputs for detail years, one total per later year.
+   flow=true  → later-year cell is the year's total; flow=false → it's the rate for the year */
+function vgrid(key, W, { prefix = "", suffix = "", flow = true, label = "" } = {}) {
+  const v = W.values?.[key] || { months: {}, years: {} };
+  const mp = monthlyPeriods(); const ann = annualFys();
+  const byFy = {}; mp.forEach((p) => (byFy[p.fyi] = byFy[p.fyi] || []).push(p));
+  let h = `<div class="vgrid" data-vg="${key}"><div class="tools"><span class="hint">Quick fill: start at</span><input class="input num" data-fill-start placeholder="${prefix}0">
+    <span class="hint">grow</span><div class="pct" style="width:90px"><input class="input num" data-fill-growth placeholder="0"></div><span class="hint">a month</span><button type="button" class="btn" data-fill="${key}">Fill</button></div>`;
+  Object.keys(byFy).forEach((f) => {
+    h += `<h5>${fyLabel(+f)} — by month${label ? " (" + label + ")" : ""}</h5><div class="cells">` +
+      byFy[f].map((p) => `<label>${monthLabel(p.month)}<input class="input num" data-pi="${p.pi}" value="${v.months?.[p.pi] ?? ""}" placeholder="${prefix}0"></label>`).join("") + "</div>";
+  });
+  if (ann.length) {
+    h += `<h5>Later years — ${flow ? "total for the year" : "for the whole year"}</h5><div class="cells">` +
+      ann.map((f) => `<label>${fyLabel(f)}<input class="input num" data-fyi="${f}" value="${v.years?.[f] ?? ""}" placeholder="${prefix}0"></label>`).join("") + "</div>";
+  }
+  return h + (suffix ? `<p class="hint" style="margin:0">${suffix}</p>` : "") + "</div>";
+}
+function readVgrid(key, W) {
+  const box = document.querySelector(`[data-vg="${key}"]`); if (!box) return;
+  const months = {}, years = {};
+  box.querySelectorAll("[data-pi]").forEach((i) => { const n = parseNum(i.value); if (n != null) months[i.dataset.pi] = n; });
+  box.querySelectorAll("[data-fyi]").forEach((i) => { const n = parseNum(i.value); if (n != null) years[i.dataset.fyi] = n; });
+  W.values = W.values || {}; W.values[key] = { months, years };
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-fill]"); if (!b) return;
+  const box = b.closest(".vgrid"); let x = parseNum(box.querySelector("[data-fill-start]").value); const g = parseNum(box.querySelector("[data-fill-growth]").value) || 0;
+  if (x == null) return toast("Type a starting number first", true);
+  const cells = [...box.querySelectorAll("[data-pi]")];
+  cells.forEach((c) => { c.value = Math.round(x * 100) / 100; x = x * (1 + g / 100); });
+  // later years: total of 12 months continuing the growth
+  box.querySelectorAll("[data-fyi]").forEach((c) => { let t = 0; for (let k = 0; k < 12; k++) { t += x; x *= 1 + g / 100; } c.value = Math.round(t); });
+});
+
+/* ============================================================
+   WIZARDS
+   ============================================================ */
+function openWizard(kind, item) { ({ revenue: wizRevenue, personnel: wizPersonnel, expenses: wizExpense })[kind](item); }
+const valuesOf = (item) => { const out = {}; if (!item) return out; Object.entries(S.d.values || {}).forEach(([k, v]) => { const [id, field] = k.split(":"); if (id === item.id) out[field] = v; }); return out; };
+const startStep = (noun) => ({
+  q: () => `When does this ${noun} start?`,
+  html: (W) => `<label class="field"><span>Starting month</span><select class="select" id="wStart">${startOptions(W.start_month)}</select></label>`,
+  read: (W) => { W.start_month = +val("wStart") || 0; },
+});
+async function saveItem(table, W, fields, valueKeys) {
+  const item = {}; fields.forEach((f) => { if (W[f] !== undefined) item[f] = W[f]; });
+  if (W.id) item.id = W.id;
+  const values = {}; (valueKeys || []).forEach((k) => (values[k] = W.values?.[k] || { months: {}, years: {} }));
+  const d = await api("save_item", { table, scenario_id: S.d.scenario.id, item, values });
+  setData(d, W.id ? "Saved" : "Added " + W.name);
+}
+
+/* ---------- Revenue ---------- */
+function wizRevenue(item) {
+  const W = item ? { ...item, values: valuesOf(item) } : { type: null, qty_mode: "constant", price_mode: "constant", qty_per: "month", start_month: 0, charge_frequency_months: 1, churn_constant: 0, existing_customers: 0, upfront_mode: "none", sales_taxable: true, values: {} };
+  const Q = { hours: ["hours will you bill", "hours"], unit: ["units will you sell", "units"], recurring: ["new customers will sign up", "sign-ups"], revenue_only: ["revenue will you bring in", "revenue"] };
+  wizard({
+    title: item ? "Edit revenue stream" : "Add revenue stream", W,
+    steps: [
+      { q: () => "What do you call this revenue stream?", lede: () => "Use a name you'd recognize on a report, like “VA care hours” or “Private pay care”.",
+        html: (W) => `<label class="field"><span>Name</span><input class="input" id="wName" value="${esc(W.name || "")}" placeholder="e.g. VA care hours"></label>`,
+        read: (W) => { W.name = val("wName").trim(); }, check: (W) => !W.name && "Give it a name" },
+      { q: () => "How do you charge for it?", autoNext: true,
+        html: (W) => optCards("type", W.type, [
+          { v: "hours", t: "Billable hours", d: "You charge by the hour — care visits, consulting, cleaning." },
+          { v: "unit", t: "Unit sales", d: "You sell individual items or visits at a set price." },
+          { v: "recurring", t: "Recurring charges", d: "Customers pay on a schedule — memberships, subscriptions." },
+          { v: "revenue_only", t: "Revenue only", d: "You'll just enter the dollar amount." } ]),
+        check: (W) => !W.type && "Pick one" },
+      startStep("revenue stream"),
+      { q: (W) => `How many ${Q[W.type][0]}?`, lede: (W) => W.type === "recurring" ? "New customers each month. Churn and existing customers come next." : "",
+        html: (W) => toggle("qty_mode", W.qty_mode, [{ v: "constant", t: "Same every month" }, { v: "varying", t: "Changes over time" }]) +
+          (W.qty_mode === "constant"
+            ? `<div class="row2"><label class="field"><span>${W.type === "revenue_only" ? "Amount" : "Number of " + Q[W.type][1]}</span><div class="${W.type === "revenue_only" ? "money" : ""}"><input class="input num" id="wQty" inputmode="decimal" value="${plain(W.qty_constant)}"></div></label>
+               <label class="field"><span>Per</span><select class="select" id="wQtyPer"><option value="month" ${W.qty_per !== "year" ? "selected" : ""}>Month</option><option value="year" ${W.qty_per === "year" ? "selected" : ""}>Year</option></select></label></div>`
+            : vgrid("qty", W, { prefix: W.type === "revenue_only" ? "$" : "", label: Q[W.type][1] })),
+        read: (W) => { if (W.qty_mode === "constant") { W.qty_constant = parseNum(val("wQty")) ?? 0; W.qty_per = val("wQtyPer"); } else readVgrid("qty", W); } },
+      { when: (W) => W.type !== "revenue_only",
+        q: (W) => ({ hours: "What's your hourly rate?", unit: "What's the price per unit?", recurring: "How much do you charge each customer?" })[W.type],
+        html: (W) => toggle("price_mode", W.price_mode, [{ v: "constant", t: "Same every month" }, { v: "varying", t: "Changes over time" }]) +
+          (W.price_mode === "constant"
+            ? `<div class="row2"><label class="field"><span>${W.type === "hours" ? "Rate per hour" : "Price"}</span><div class="money"><input class="input num" id="wPrice" inputmode="decimal" value="${plain(W.price_constant)}"></div></label>
+               ${W.type === "recurring" ? `<label class="field"><span>Charged every</span><select class="select" id="wFreq">${[1, 2, 3, 6, 12].map((n) => `<option value="${n}" ${+W.charge_frequency_months === n ? "selected" : ""}>${n === 1 ? "month" : n + " months"}</option>`).join("")}</select></label>` : ""}</div>`
+            : vgrid("price", W, { prefix: "$", flow: false, label: "price" }) + (W.type === "recurring" ? `<label class="field" style="margin-top:12px"><span>Charged every</span><select class="select" id="wFreq">${[1, 2, 3, 6, 12].map((n) => `<option value="${n}" ${+W.charge_frequency_months === n ? "selected" : ""}>${n === 1 ? "month" : n + " months"}</option>`).join("")}</select></label>` : "")),
+        read: (W) => { if (W.price_mode === "constant") W.price_constant = parseNum(val("wPrice")) ?? 0; else readVgrid("price", W); if ($("wFreq")) W.charge_frequency_months = +val("wFreq"); } },
+      { when: (W) => W.type === "recurring", q: () => "How many customers stay?",
+        html: (W) => `<div class="row2"><label class="field"><span>Customers who cancel each month</span><div class="pct"><input class="input num" id="wChurn" inputmode="decimal" value="${plain(W.churn_constant)}"></div></label>
+          <label class="field"><span>Customers you already have</span><input class="input num" id="wExist" inputmode="decimal" value="${plain(W.existing_customers)}"></label></div>
+          <label class="field"><span>One-time sign-up fee (optional)</span><div class="money"><input class="input num" id="wUp" inputmode="decimal" value="${W.upfront_mode === "constant" ? plain(W.upfront_constant) : ""}"></div></label>`,
+        read: (W) => { W.churn_constant = parseNum(val("wChurn")) ?? 0; W.existing_customers = parseNum(val("wExist")) ?? 0; const up = parseNum(val("wUp")); W.upfront_mode = up ? "constant" : "none"; W.upfront_constant = up || 0; } },
+    ],
+    save: (W) => saveItem("revenue_streams", W, ["name", "type", "start_month", "qty_mode", "qty_constant", "qty_per", "price_mode", "price_constant", "charge_frequency_months", "churn_constant", "existing_customers", "upfront_mode", "upfront_constant", "sales_taxable"],
+      [W.qty_mode === "varying" && "qty", W.type !== "revenue_only" && W.price_mode === "varying" && "price"].filter(Boolean)),
+  });
+}
+
+/* ---------- Personnel ---------- */
+function wizPersonnel(item) {
+  const W = item ? { ...item, values: valuesOf(item) } : { personnel_type: null, labor_type: null, staffing: "on_staff", headcount_mode: "constant", headcount_constant: 1, pay_mode: null, pay_per: "month", start_month: 0, annual_raise_pct: 0, values: {} };
+  wizard({
+    title: item ? "Edit employee" : "Add employee", W,
+    steps: [
+      { q: () => "Who are you adding?", autoNext: true,
+        html: (W) => optCards("personnel_type", W.personnel_type, [
+          { v: "individual", t: "One person", d: "A specific role, like Director of Operations or a scheduler." },
+          { v: "group", t: "A group of people", d: "Several people doing the same job, like caregivers." } ]),
+        check: (W) => !W.personnel_type && "Pick one" },
+      { q: (W) => W.personnel_type === "group" ? "What do you call this group?" : "What's their job title?",
+        html: (W) => `<label class="field"><span>${W.personnel_type === "group" ? "Group name" : "Title"}</span><input class="input" id="wName" value="${esc(W.name || "")}" placeholder="${W.personnel_type === "group" ? "e.g. Caregivers" : "e.g. Office manager"}"></label>`,
+        read: (W) => { W.name = val("wName").trim(); }, check: (W) => !W.name && "Give it a name" },
+      { q: (W) => W.personnel_type === "group" ? "Do they deliver the service you sell?" : "Do they deliver the service you sell?",
+        lede: () => "Caregivers who go into clients' homes are direct labor — their pay shows up as a cost of the service, not overhead.", autoNext: true,
+        html: (W) => optCards("labor_type", W.labor_type, [{ v: "direct", t: "Yes — direct labor", d: "Caregivers, cleaners, technicians." }, { v: "regular", t: "No — regular staff", d: "Office, management, scheduling, sales." }]),
+        check: (W) => !W.labor_type && "Pick one" },
+      { q: () => "Are they employees or contractors?", autoNext: true,
+        html: (W) => optCards("staffing", W.staffing, [{ v: "on_staff", t: "Employees (W-2)", d: "Employee taxes & benefits get added on top." }, { v: "contract", t: "Contractors (1099)", d: "No payroll taxes added." }]) },
+      { when: (W) => W.personnel_type === "group", q: () => "How many people?",
+        html: (W) => toggle("headcount_mode", W.headcount_mode, [{ v: "constant", t: "Same every month" }, { v: "varying", t: "Changes over time" }]) +
+          (W.headcount_mode === "constant" ? `<label class="field" style="max-width:240px"><span>Number of people</span><input class="input num" id="wHead" inputmode="decimal" value="${plain(W.headcount_constant)}"></label>` : vgrid("headcount", W, { flow: false, label: "people" })),
+        read: (W) => { if (W.headcount_mode === "constant") W.headcount_constant = parseNum(val("wHead")) ?? 1; else readVgrid("headcount", W); } },
+      { q: (W) => W.personnel_type === "group" ? "How are they paid?" : "How are they paid?", rerender: true,
+        html: (W) => optCards("pay_mode", W.pay_mode, [
+          { v: "constant", t: "A set salary or wage", d: W.personnel_type === "group" ? "The same amount per person every month." : "The same amount every month." },
+          { v: "pct_stream", t: "Tied to a revenue stream", d: "Pay rises and falls with what you bill — best for hourly caregivers." },
+          { v: "pct_overall", t: "A % of all revenue", d: "Like a commission on total sales." },
+          { v: "varying", t: "Changes month to month", d: "Enter the amount for each month." } ]) + payDetail(W),
+        read: (W) => readPay(W),
+        check: (W) => { if (!W.pay_mode) return "Pick one"; if (W.pay_mode === "pct_stream" && !W.stream_id) return S.d.revenue.length ? "Pick the revenue stream" : "Add a revenue stream first"; } },
+      Object.assign(startStep("pay"), { q: (W) => W.personnel_type === "group" ? "When does this group start?" : "When do they start?" }),
+      { when: (W) => W.pay_mode === "constant" || W.pay_mode === "varying", q: () => "Any yearly raise?",
+        html: (W) => `<label class="field" style="max-width:240px"><span>Raise each fiscal year</span><div class="pct"><input class="input num" id="wRaise" inputmode="decimal" value="${plain(W.annual_raise_pct)}"></div></label>`,
+        read: (W) => { W.annual_raise_pct = parseNum(val("wRaise")) ?? 0; } },
+    ],
+    save: (W) => saveItem("personnel", W, ["name", "personnel_type", "labor_type", "staffing", "headcount_mode", "headcount_constant", "pay_mode", "pay_amount", "pay_per", "pct", "stream_id", "start_month", "annual_raise_pct"],
+      [W.pay_mode === "varying" && "pay", W.personnel_type === "group" && W.headcount_mode === "varying" && "headcount"].filter(Boolean)),
+  });
+}
+function payDetail(W) {
+  if (W.pay_mode === "constant") return `<div class="row2" style="margin-top:16px"><label class="field"><span>Pay${W.personnel_type === "group" ? " per person" : ""}</span><div class="money"><input class="input num" id="wPay" inputmode="decimal" value="${plain(W.pay_amount)}"></div></label>
+    <label class="field"><span>Per</span><select class="select" id="wPayPer"><option value="month" ${W.pay_per !== "year" ? "selected" : ""}>Month</option><option value="year" ${W.pay_per === "year" ? "selected" : ""}>Year</option></select></label></div>`;
+  if (W.pay_mode === "varying") return `<div style="margin-top:16px">${vgrid("pay", W, { prefix: "$", label: W.personnel_type === "group" ? "pay per person" : "pay" })}</div>`;
+  if (W.pay_mode === "pct_overall") return `<label class="field" style="margin-top:16px;max-width:240px"><span>Percent of all revenue</span><div class="pct"><input class="input num" id="wPct" inputmode="decimal" value="${plain(W.pct)}"></div></label>`;
+  if (W.pay_mode === "pct_stream") {
+    if (!S.d.revenue.length) return `<p class="calc" style="margin-top:16px">Add a revenue stream first, then come back.</p>`;
+    const st = S.d.revenue.find((r) => r.id === W.stream_id) || null;
+    const hourly = st && st.type === "hours" && st.price_mode === "constant";
+    return `<div class="row2" style="margin-top:16px"><label class="field"><span>Revenue stream</span><select class="select" id="wStream"><option value="">Choose…</option>${streamOptions(W.stream_id)}</select></label>
+      <label class="field"><span>Percent of that stream</span><div class="pct"><input class="input num" id="wPct" inputmode="decimal" value="${plain(W.pct)}"></div></label></div>
+      ${hourly ? `<div class="row2"><label class="field"><span>Or: what do you pay per hour?</span><div class="money"><input class="input num" id="wWage" inputmode="decimal" placeholder="e.g. 18"></div></label><div class="field"><span>&nbsp;</span><div class="calc" id="wCalc">You bill ${money(st.price_constant)}/hr. Type the wage and we'll work out the %.</div></div></div>` : ""}`;
+  }
+  return "";
+}
+function readPay(W) {
+  if (W.pay_mode === "constant") { W.pay_amount = parseNum(val("wPay")) ?? 0; W.pay_per = val("wPayPer"); }
+  if (W.pay_mode === "varying") readVgrid("pay", W);
+  if (W.pay_mode === "pct_overall") W.pct = parseNum(val("wPct")) ?? 0;
+  if (W.pay_mode === "pct_stream") { W.stream_id = val("wStream") || null; W.pct = parseNum(val("wPct")) ?? 0; }
+}
+document.addEventListener("input", (e) => {
+  if (e.target.id === "wWage" && WZ) {
+    const st = S.d.revenue.find((r) => r.id === val("wStream")); const w = parseNum(e.target.value);
+    if (st && w && +st.price_constant) { const p = Math.round((w / +st.price_constant) * 1000) / 10; $("wPct").value = p; $("wCalc").textContent = `$${w}/hr ÷ ${money(st.price_constant)}/hr = ${p}% of ${st.name}`; }
+  }
+});
+document.addEventListener("change", (e) => { if (e.target.id === "wStream" && WZ) { readStep(); drawStep(); } });
+
+/* ---------- Expenses ---------- */
+function wizExpense(item) {
+  const W = item ? { ...item, values: valuesOf(item) } : { expense_type: null, mode: null, amount_mode: "constant", per: "month", start_month: 0, values: {} };
+  wizard({
+    title: item ? "Edit expense" : "Add expense", W,
+    steps: [
+      { q: () => "What do you call this expense?", lede: () => "Like “Office rent”, “Indeed ads” or “Scheduling software”.",
+        html: (W) => `<label class="field"><span>Name</span><input class="input" id="wName" value="${esc(W.name || "")}" placeholder="e.g. Office rent"></label>`,
+        read: (W) => { W.name = val("wName").trim(); }, check: (W) => !W.name && "Give it a name" },
+      { q: () => "What kind of expense is it?", autoNext: true,
+        html: (W) => optCards("expense_type", W.expense_type, [{ v: "rent", t: "Rent", d: "Office or facility rent." }, { v: "marketing", t: "Marketing", d: "Ads, job boards, promotions." }, { v: "other", t: "Other", d: "Software, insurance, phones, supplies, fees." }]),
+        check: (W) => !W.expense_type && "Pick one" },
+      { q: () => "How much is it?", rerender: true,
+        html: (W) => optCards("mode", W.mode, [
+          { v: "amount", t: "A dollar amount", d: "A set amount, or one that changes month to month." },
+          { v: "pct_overall", t: "A % of all revenue", d: "Like card processing fees." },
+          { v: "pct_stream", t: "A % of one revenue stream", d: "Grows with one specific stream." } ]) + expDetail(W),
+        read: (W) => {
+          if (W.mode === "amount") { if (W.amount_mode === "constant") { W.amount = parseNum(val("wAmt")) ?? 0; W.per = val("wPer"); } else readVgrid("amount", W); }
+          if (W.mode === "pct_overall") W.pct = parseNum(val("wPct")) ?? 0;
+          if (W.mode === "pct_stream") { W.stream_id = val("wStream") || null; W.pct = parseNum(val("wPct")) ?? 0; }
+        },
+        check: (W) => { if (!W.mode) return "Pick one"; if (W.mode === "pct_stream" && !W.stream_id) return S.d.revenue.length ? "Pick the revenue stream" : "Add a revenue stream first"; } },
+      startStep("expense"),
+    ],
+    save: (W) => saveItem("expenses", W, ["name", "expense_type", "mode", "amount_mode", "amount", "per", "pct", "stream_id", "start_month"], [W.mode === "amount" && W.amount_mode === "varying" && "amount"].filter(Boolean)),
+  });
+}
+function expDetail(W) {
+  if (W.mode === "amount") return `<div style="margin-top:16px">` + toggle("amount_mode", W.amount_mode, [{ v: "constant", t: "Same every month" }, { v: "varying", t: "Changes over time" }]) +
+    (W.amount_mode === "constant" ? `<div class="row2"><label class="field"><span>Amount</span><div class="money"><input class="input num" id="wAmt" inputmode="decimal" value="${plain(W.amount)}"></div></label>
+      <label class="field"><span>Per</span><select class="select" id="wPer"><option value="month" ${W.per !== "year" ? "selected" : ""}>Month</option><option value="year" ${W.per === "year" ? "selected" : ""}>Year</option></select></label></div>` : vgrid("amount", W, { prefix: "$" })) + "</div>";
+  if (W.mode === "pct_overall") return `<label class="field" style="margin-top:16px;max-width:240px"><span>Percent of all revenue</span><div class="pct"><input class="input num" id="wPct" inputmode="decimal" value="${plain(W.pct)}"></div></label>`;
+  if (W.mode === "pct_stream") return S.d.revenue.length ? `<div class="row2" style="margin-top:16px"><label class="field"><span>Revenue stream</span><select class="select" id="wStream"><option value="">Choose…</option>${streamOptions(W.stream_id)}</select></label>
+      <label class="field"><span>Percent of that stream</span><div class="pct"><input class="input num" id="wPct" inputmode="decimal" value="${plain(W.pct)}"></div></label></div>` : `<p class="calc" style="margin-top:16px">Add a revenue stream first, then come back.</p>`;
+  return "";
+}
+
+/* ---------- New company ---------- */
+function wizCompany() {
+  const now = new Date(); const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
+  const W = { start: next, fy_start: 1, years: 3 };
+  S.d = S.d || null;
+  wizard({
+    title: "New company", W, saveLabel: "Create company",
+    steps: [
+      { q: () => "What's the company called?", lede: () => "You can model your own companies or a client's.",
+        html: (W) => `<label class="field"><span>Company name</span><input class="input" id="wName" value="${esc(W.name || "")}" placeholder="e.g. Whole Hearted Home Care"></label>
+          <label class="field"><span>One-line description (optional — shows on the PDF cover)</span><input class="input" id="wDesc" value="${esc(W.description || "")}" placeholder="e.g. Non-medical home care in southern NH"></label>`,
+        read: (W) => { W.name = val("wName").trim(); W.description = val("wDesc").trim(); }, check: (W) => !W.name && "Give it a name" },
+      { q: () => "When does the forecast start?", lede: () => "Usually next month. The fiscal year is the 12 months your books and taxes use — January for most small businesses.",
+        html: (W) => `<div class="row3"><label class="field"><span>First month</span><select class="select" id="wStartM">${monthOptions(W.start)}</select></label>
+          <label class="field"><span>Fiscal year starts in</span><select class="select" id="wFy">${MONTHS_LONG.map((m, i) => `<option value="${i + 1}" ${W.fy_start === i + 1 ? "selected" : ""}>${m}</option>`).join("")}</select></label>
+          <label class="field"><span>Length</span><select class="select" id="wYears"><option value="3" ${W.years === 3 ? "selected" : ""}>3 years</option><option value="5" ${W.years === 5 ? "selected" : ""}>5 years</option></select></label></div>`,
+        read: (W) => { W.start = val("wStartM"); W.fy_start = +val("wFy"); W.years = +val("wYears"); } },
+    ],
+    save: async (W) => {
+      const d = await api("create_company", { name: W.name, description: W.description || null, start: W.start, fy_start: W.fy_start, years: W.years, detail_years: 1 });
+      S.d = d; localSet("fc.lastScenario", d.scenario.id); refreshList(); go("revenue"); toast("Created " + W.name);
+    },
+  });
+}
+
+/* ============================================================
+   PDF (print-to-PDF with a dedicated report layout)
+   ============================================================ */
+async function buildPdf() {
+  if (!S.d) return;
+  const d = S.d, fys = fyList(), c = d.company;
+  const f0 = fys.find((f) => d.periods.filter((p) => p.fyi === f).length === 12) ?? fys[0];
+  const firstMonthlyFy = fys.find((f) => d.periods.find((p) => p.fyi === f && p.monthly));
+  const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  // render charts off-screen to images
+  const imgs = {};
+  const defs = chartDefs();
+  for (const [k, def] of Object.entries({ rev: defs.rev, cash: defs.cash, np: defs.np, mix: defs.mix })) {
+    const box = document.createElement("div"); box.style.cssText = "position:fixed;left:-3000px;top:0;width:900px;height:380px"; const cv = document.createElement("canvas"); box.appendChild(cv); document.body.appendChild(box);
+    const ch = new Chart(cv, { type: def.type, data: def.data, options: { ...chartOpts(def.horizontal, false), devicePixelRatio: 2 } });
+    imgs[k] = ch.toBase64Image("image/png", 1); ch.destroy(); box.remove();
+  }
+  const rev = fyTotal("revenue", f0), np = fyTotal("net_profit", f0), cashEnd = fyEnd("cash", f0);
+  let low = Infinity, lowP = null; d.results.forEach((r) => { if (+r.cash < low) { low = +r.cash; lowP = r; } });
+  const head = (t) => `<div class="p-h"><h2>${t}</h2><span>${esc(c.name)} · ${esc(d.scenario.name)} scenario</span></div>`;
+  const foot = `<div class="foot">Prepared by Highland Lake Capital · ${today}. Projections are estimates based on the assumptions provided and are not a guarantee of future results.</div>`;
+  const stPage = (title, rows, view, year, monthly) => `<section class="pg">${head(title + (monthly ? " — " + fyLabel(year) + " by month" : " — by year"))}${statementTable(rows, view, year, "pt" + (monthly ? " m" : ""))}${foot}</section>`;
+  $("print").innerHTML = `
+    <section class="pg cover"><div class="bar"></div>
+      <div><div class="brand" style="margin-bottom:28pt"><svg class="mark" viewBox="0 0 40 40" style="width:40pt;height:40pt"><rect width="40" height="40" rx="9" fill="#12263f"/><path d="M6 26 L15 13 L21 21 L25 16 L34 26 Z" fill="#1c7c8c"/><path d="M6 30 q4 -3 8 0 t8 0 t8 0 t4 0" stroke="#e6f3f5" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+        <div class="bt"><b style="font-size:13pt">Highland Lake Capital</b><span style="font-size:9pt">Advisory &amp; financial planning</span></div></div>
+        <h1>${esc(c.name)}</h1><h2>Financial Forecast</h2>${c.description ? `<p style="font-size:11pt;color:#66727f;margin-top:10pt;max-width:6in">${esc(c.description)}</p>` : ""}</div>
+      <div class="meta">Forecast period: ${monthLong(d.periods[0].month)} – ${monthLong(d.periods[d.periods.length - 1].month)}<br>Scenario: ${esc(d.scenario.name)}<br>Prepared by Highland Lake Capital · ${today}</div>
+      <div class="bar"></div></section>
+    <section class="pg">${head("Summary")}
+      <div class="p-kpis"><div><span>Revenue · ${fyLabel(f0)}</span><b>${money(rev)}</b></div><div><span>Net profit · ${fyLabel(f0)}</span><b>${money(np)}</b></div><div><span>Cash at end of ${fyLabel(f0)}</span><b>${money(cashEnd)}</b></div><div><span>Lowest cash${lowP ? " · " + monthLong(lowP.month_start) : ""}</span><b>${money(low)}</b></div></div>
+      <div class="p-charts"><div><p>Revenue by month</p><img src="${imgs.rev}"></div><div><p>Cash on hand</p><img src="${imgs.cash}"></div><div><p>Net profit by year</p><img src="${imgs.np}"></div><div><p>Where the money goes · ${fyLabel(f0)}</p><img src="${imgs.mix}"></div></div>${foot}</section>
+    ${stPage("Profit & Loss", PL, "annual", 0, false)}
+    ${firstMonthlyFy != null ? stPage("Profit & Loss", PL, "monthly", firstMonthlyFy, true) : ""}
+    ${stPage("Balance Sheet", BS, "annual", 0, false)}
+    ${stPage("Cash Flow", CF, "annual", 0, false)}
+    ${firstMonthlyFy != null ? stPage("Cash Flow", CF, "monthly", firstMonthlyFy, true) : ""}`;
+  const oldTitle = document.title; document.title = c.name + " — Financial Forecast";
+  await Promise.all([...$("print").querySelectorAll("img")].map((im) => im.complete ? 0 : new Promise((r) => (im.onload = im.onerror = r))));
+  setTimeout(() => { window.print(); document.title = oldTitle; }, 50);
+}
+
+/* ============================================================
+   DEMO MODE (?demo) — local preview with saved sample data
+   ============================================================ */
+let DEMO_DATA = null;
+async function demoApi(action, p) {
+  if (!DEMO_DATA) DEMO_DATA = await fetch("demo.json").then((r) => r.json());
+  window.__last = { action, p };
+  if (action === "list") return [{ id: DEMO_DATA.company.id, name: DEMO_DATA.company.name, description: DEMO_DATA.company.description, status: "active", scenario_id: DEMO_DATA.scenario.id, revenue_y1: 2433600, net_profit_y1: 512000 }];
+  return DEMO_DATA;
+}
+
+boot();
+</script>
+</body>
+</html>
